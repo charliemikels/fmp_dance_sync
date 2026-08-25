@@ -275,28 +275,6 @@ function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
     end
 end
 
-
--- local function create_dance_action(key)
---     local this_dance_metadata = dance_metadata[key] or {}
-
---     local dance_toggle = action_wheel:newAction()
---         :title(this_dance_metadata.title or key)
---         :item(this_dance_metadata.item or "minecraft:yellow_dye")
---         :onToggle(function(toggle_state)
---             if toggle_state then
---                 pings.set_dance(key)
---             else
---                 pings.set_dance(nil)
---             end
---             print("toggle", toggle_state)
---         end)
---     dance_action_wheel_page:setAction(-1, dance_toggle)
-
---     dances[key].action = dance_toggle
--- end
-
-
-
 events.ENTITY_INIT:register(function()
     -- print(animations:getAnimations())
     for i, animation in pairs(animations:getAnimations()) do
