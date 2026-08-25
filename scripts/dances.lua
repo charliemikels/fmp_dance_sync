@@ -82,7 +82,12 @@ local function create_title_text_for_dance_selector(dance_selector_action)
             local this_row_dance_id = sorted_dance_keys[index]
             local this_row_dance = dances[this_row_dance_id]
 
+            -- Selector
+            this_row_string = this_row_string .. (index == dance_selector_state.hover_index and "→" or "  ")
+
             this_row_string = this_row_string .. this_row_dance.name
+
+
 
 
             -- -- Selector
