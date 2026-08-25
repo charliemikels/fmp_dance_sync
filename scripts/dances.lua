@@ -103,8 +103,14 @@ local select_dance_action = action_wheel:newAction()
     :item("minecraft:purple_dye")
     :onLeftClick(function(this)
         print("clicked")
-        print(dances)
-        print(sorted_dance_keys)
+        print(dances[sorted_dance_keys[dance_selector_state.hover_index]])
+
+        if dance_state and dance_state.animation_key == sorted_dance_keys[dance_selector_state.hover_index] then
+            pings.set_dance(nil, nil, nil)  -- stop dance that's already playing
+        else
+            -- TODO: Get sync info from the sync action
+            pings.set_dance(sorted_dance_keys[dance_selector_state.hover_index], nil, nil)
+        end
 
         create_title_text_for_dance_selector(this)
     end)
@@ -252,6 +258,8 @@ function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
         start_metronome_events()
         dance_state.animation:play()
     end
+
+    if host:isHost() then create_title_text_for_dance_selector(select_dance_action) end
 end
 
 events.ENTITY_INIT:register(function()
