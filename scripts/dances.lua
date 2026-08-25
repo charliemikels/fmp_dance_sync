@@ -10,6 +10,11 @@ local dance_metadata = {
 
 
 
+keybinds:newKeybind(
+    "Scroll dance list faster",
+    keybinds:getVanillaKey("key.sprint")
+)
+
 
 
 
@@ -128,7 +133,7 @@ local select_dance_action = action_wheel:newAction()
         if not next(dances) then return end
 
         local natural_scroll = false
-        local scroll_amount = keybinds:getKeybinds()["Scroll song list faster"]:isPressed() and 20 or 1
+        local scroll_amount = keybinds:getKeybinds()["Scroll dance list faster"]:isPressed() and 20 or 1
         dance_selector_state.hover_index = dance_selector_state.hover_index + scroll_amount * scroll_direction * (natural_scroll and 1 or -1)
 
         -- Scroll wrap
