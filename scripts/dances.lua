@@ -58,7 +58,7 @@ local dance_selector_state = {
 
 local num_songs_to_display_in_selector = 16
 local function create_title_text_for_dance_selector(dance_selector_action)
-    local title_text = "Select dance\n\n"
+    local title_text = "Select dance\n"
 
     if not next(sorted_dance_keys) then
         title_text = title_text .. "No dances found"
@@ -78,46 +78,20 @@ local function create_title_text_for_dance_selector(dance_selector_action)
         end
 
         for index = start_index, end_index do
-            local this_row_string = ""
             local this_row_dance_id = sorted_dance_keys[index]
             local this_row_dance = dances[this_row_dance_id]
 
-            -- Selector
-            this_row_string = this_row_string .. (index == dance_selector_state.hover_index and "→" or "  ")
+            local this_row_string = "\n"
+                .. (index == dance_selector_state.hover_index and "→" or "  ")
+                .. (dance_state and this_row_dance_id == dance_state.animation_key and "♬" or "  ")
+                .. this_row_dance.name
 
-            this_row_string = this_row_string .. this_row_dance.name
-
-
-
-
-            -- -- Selector
-            -- this_row_string = this_row_string .. (index == selected_song_index and "→" or "  ")
-
-            -- -- Status
-            -- if      song_processors_and_player_controllers[this_row_song.id]
-            --     and song_processors_and_player_controllers[this_row_song.id].net_player_controller
-            --     and song_processors_and_player_controllers[this_row_song.id].net_player_controller.is_playing()
-            -- then
-            --     -- song is playing
-            --     this_row_string = this_row_string .. "♬"
-            -- elseif song_processors_and_player_controllers[this_row_song.id] then
-            --     if song_processors_and_player_controllers[this_row_song.id].error then
-            --         this_row_string = this_row_string .. "🚫"  -- "No" sign
-            --     elseif not song_processors_and_player_controllers[this_row_song.id].net_player_controller then
-            --         -- Song is in the middle of being processed.
-            --         -- (We know because the player has not been built yet, but an entry in this table was created)
-            --         this_row_string = this_row_string .. get_spinner()    -- "⏳" -- hour glass
-            --     else
-            --         this_row_string = this_row_string .. "✓ "
-            --     end
-            -- else
-            --     this_row_string = this_row_string .. "  " -- just two spaces
-            -- end
-            -- this_row_string = this_row_string .. this_row_song.name
-
-            title_text = title_text .. "\n" .. this_row_string
+            title_text = title_text .. this_row_string
         end
 
+        if dance_state then
+            title_text = title_text .. "\n\nCurrent Dance: " .. dance_state.animation_key
+        end
         -- title_text = title_text .. "\ndances found";
     end
 
