@@ -217,7 +217,7 @@ local function unregister_once_known_player_avatar(avatar_uuid)
 end
 
 local function check_next_avatar_for_song_player()
-    local fmp_avatar_uuid, this_avatar_vars = next(world.avatarVars(), last_checked_uuid)
+    local fmp_avatar_uuid, this_avatar_vars = next(world.avatarVars(), world.avatarVars()[last_checked_uuid] and last_checked_uuid or nil)
     last_checked_uuid = fmp_avatar_uuid
     if fmp_avatar_uuid == nil then return end
 
