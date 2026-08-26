@@ -150,21 +150,37 @@ local function start_metronome_events() end
 
 local function stop_metronome_events() end
 
-
-local known_avatars_with_tl_fmp = {}    ---@type table<UUID, SongPlayerExportedInfoApi>
+local known_avatars_with_tl_fmp = {}    ---@type table<UUID, {update_loop_fn: function?, music_api: SongPlayerExportedInfoApi}>
 local last_checked_uuid = nil
 
 
 local function has_api_changed(our_reference, external_api)
-    return our_reference.time_player_initialized() ~= external_api.time_player_initialized()
+    return our_reference.music_api.time_player_initialized() ~= external_api.time_player_initialized()
 end
 
+local function register_new_song(avatar_uuid, song_uuid)
+    local _ = known_avatars_with_tl_fmp[avatar_uuid].music_api
+    print("\nFound playing song:\n",avatar_uuid, song_uuid)
+end
 
 ---@param avatar_uuid UUID
 ---@param exported_info_api SongPlayerExportedInfoApi
 local function register_new_known_music_avatar(avatar_uuid, exported_info_api)
-    print("found avatar with player", avatar_uuid)
-    -- print("found TL_FMP avatar: "..fmp_avatar_uuid)
+    print("found avatar with TL_FMP", avatar_uuid)
+
+    known_avatars_with_tl_fmp[avatar_uuid] = {}
+    known_avatars_with_tl_fmp[avatar_uuid].music_api = exported_info_api
+
+    local song_uuids_and_pos = exported_info_api.get_all_playing_song_uuids_and_positions() ---@type table<UUID, Vector3>
+    for song_uuid, pos in pairs(song_uuids_and_pos) do register_new_song(avatar_uuid, song_uuid) end
+
+
+    exported_info_api.add_song_start_callback(function(song_uuid)
+        register_new_song(avatar_uuid, song_uuid)
+    end)
+
+
+
 
     -- new_found_api.add_song_start_callback(function(song_uuid)
     --     host:setActionbar("Song: "..new_found_api.get_song_name(song_uuid), true)
@@ -208,10 +224,9 @@ local function register_new_known_music_avatar(avatar_uuid, exported_info_api)
 
     -- end)
 
-    known_avatars_with_tl_fmp[avatar_uuid] = exported_info_api
 end
 
-local function unregister_once_known_player_avatar(avatar_uuid)
+local function unregister_previously_known_player_avatar(avatar_uuid)
     known_avatars_with_tl_fmp[avatar_uuid] = nil
     -- TODO: stop any animations relying on this avatar
 end
@@ -228,7 +243,7 @@ local function check_next_avatar_for_song_player()
 
     local success, result = pcall(has_api_changed, known_avatars_with_tl_fmp[fmp_avatar_uuid], this_avatar_vars["TL_FMP_exported_song_info_api"])
     if success and result then  -- Avatar was once valid and is not any more.
-        unregister_once_known_player_avatar(fmp_avatar_uuid)
+        unregister_previously_known_player_avatar(fmp_avatar_uuid)
     end
 end
 events.TICK:register(check_next_avatar_for_song_player)
@@ -239,7 +254,7 @@ function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
         if dance_state and dance_state.animation then dance_state.animation:stop() end
         dance_state = nil
 
-    elseif dance_state then -- this ping is doing an update. no need to do a full reinitilize
+    elseif dance_state then -- this ping is doing an update. no need to do a full reinitialize
         dance_state.animation:stop()
 
         dance_state.animation_key = animation_key
@@ -247,7 +262,7 @@ function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
 
         dance_state.animation:play()
 
-    else --
+    else    -- Set and start dance.
         dance_state = {
             animation_key = animation_key,
             animation = dances[animation_key].animation,
