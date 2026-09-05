@@ -175,55 +175,9 @@ local function register_new_known_music_avatar(avatar_uuid, exported_info_api)
     for song_uuid, pos in pairs(song_uuids_and_pos) do register_new_song(avatar_uuid, song_uuid) end
 
 
-    exported_info_api.add_song_start_callback(function(song_uuid)
-        register_new_song(avatar_uuid, song_uuid)
-    end)
-
-
-
-
-    -- new_found_api.add_song_start_callback(function(song_uuid)
-    --     host:setActionbar("Song: "..new_found_api.get_song_name(song_uuid), true)
-
-    --     local bpm_print_update_loop_name = "TEST_FISH_FISH_TEST!!"
-    --     local last_beat = -1
-    --     -- new_found_api.add_song_metronome_update_callback(song_uuid, function(metronome_info)
-    --     --     events.TICK:remove(bpm_print_update_loop_name)
-
-    --     --     events.TICK:register(
-    --     --         function ()
-    --     --             local this_beat = math.floor(metronome_info.get_current_beat() )
-
-    --     --             local current_beat_printable = math.floor(metronome_info.get_current_measure() +1) .. " . " .. math.floor(metronome_info.get_current_beat_in_measure()+1) .. "  |  " .. string.format("%.3f", metronome_info.get_current_beat())
-
-    --     --             if last_beat ~= this_beat then
-    --     --                 last_beat = this_beat
-
-    --     --                 if math.floor(metronome_info.get_current_beat_in_measure()) == 0 then
-    --     --                     host:setActionbar("▊▊▊▊▊▊▊▊▊▊▊▊▊ ".. current_beat_printable .." ▊▊▊▊▊▊▊▊▊▊▊▊▊")
-    --     --                 else
-    --     --                     host:setActionbar("▊ ".. current_beat_printable .." ▊")
-    --     --                 end
-
-    --     --             else
-    --     --                 host:setActionbar(current_beat_printable)
-    --     --             end
-
-    --     --         end,
-    --     --         bpm_print_update_loop_name
-    --     --     )
-
-    --     -- end)
-
-
-    --     new_found_api.add_song_stop_callback(song_uuid, function()
-    --         -- print("Song ended")
-    --         events.TICK:remove(bpm_print_update_loop_name)
-    --     end)
-
-
+    -- exported_info_api.add_song_start_callback(function(song_uuid)
+    --     register_new_song(avatar_uuid, song_uuid)
     -- end)
-
 end
 
 local function unregister_previously_known_player_avatar(avatar_uuid)
