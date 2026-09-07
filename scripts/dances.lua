@@ -39,6 +39,32 @@ local exit_dace_wheel_page = action_wheel:newAction()
 dance_action_wheel_page:setAction(1, exit_dace_wheel_page)
 
 
+local nearest_fmp_avatar_uuid = nil     ---@type UUID?
+local nearest_fmp_song_uuid = nil       ---@type UUID?
+
+
+local function pingless_remove_sync_to_fmp()
+    nearest_fmp_avatar_uuid = nil
+    nearest_fmp_song_uuid = nil
+
+    -- TODO: add stop event loop logic
+end
+function pings.remove_sync_to_fmp() pingless_remove_sync_to_fmp() end
+
+
+local function pingless_sync_to_fmp(avatar_uuid, song_uuid)
+    if not (avatar_uuid and song_uuid) then
+        pingless_remove_sync_to_fmp()
+    else
+        nearest_fmp_avatar_uuid = avatar_uuid
+        nearest_fmp_song_uuid = song_uuid
+
+        -- TODO: check if these are valid avatars and songs. they may be valid for host, but not for us.
+
+        -- TODO: add event loop starting logic.
+    end
+end
+function pings.sync_to_fmp(avatar_uuid, song_uuid) pingless_sync_to_fmp(avatar_uuid, song_uuid) end
 
 local dances = {}
 
@@ -133,6 +159,60 @@ dance_action_wheel_page:setAction(4, select_dance_action)
 local sync_dance_with_nearest_music = action_wheel:newAction()
     :title("Sync dance with nearest player")
     :item("minecraft:clock")
+    :setToggled(false)
+    :onLeftClick(function(this)
+        -- check for nearest FMP avatar with song. If none found, print error.
+
+        -- Unlike the passive song viewer, we don't actually need to constantly search. We can just re-scan everyone once on demand.
+
+        local avatar_of_closest_song_so_far = nil
+        local closest_song_so_far = nil
+        local closest_song_position = nil
+        local squared_distance_of_closest_song_so_far = math.huge
+            --     (nearest_fmp_avatar_uuid and nearest_fmp_song_uuid)
+            -- and (   world.avatarVars()[nearest_fmp_avatar_uuid]
+            --     and world.avatarVars()[nearest_fmp_avatar_uuid]["TL_FMP_exported_song_info_api"]
+            --     and (
+            --         (   world.avatarVars()[nearest_fmp_avatar_uuid]["TL_FMP_exported_song_info_api"].get_song_position(nearest_fmp_song_uuid)
+            --             - player:getPos()
+            --         ):lengthSquared()
+            --     )
+            -- )
+            -- or math.huge
+        -- print(squared_distance_of_closest_song_so_far)
+
+        for avatar_uuid, avatar_vars in pairs(world.avatarVars()) do
+            if avatar_vars["TL_FMP_exported_song_info_api"] and type(avatar_vars["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions) == "function" then
+                for song_uuid, song_position in pairs(avatar_vars["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions()) do
+                    local test_distance = (player:getPos() - song_position):lengthSquared()
+                    if test_distance < squared_distance_of_closest_song_so_far then
+                        avatar_of_closest_song_so_far = avatar_uuid
+                        closest_song_so_far = song_uuid
+                        closest_song_position = song_position
+                        squared_distance_of_closest_song_so_far = test_distance
+                    end
+                end
+            end
+        end
+
+        if avatar_of_closest_song_so_far and closest_song_so_far then
+            pings.sync_to_fmp(avatar_of_closest_song_so_far, closest_song_so_far)
+            this:setToggled(true)
+            print("Targeted song at ".. tostring(closest_song_position) .. "\n (".. math.floor(math.sqrt(squared_distance_of_closest_song_so_far)) .. " blocks away)\n",avatar_of_closest_song_so_far, closest_song_so_far)
+        else
+            print("no nearby song. (right click to remove selection)")
+        end
+
+
+
+    end)
+    :onRightClick(function(this)
+        -- check for nearest FMP avatar with song. If none found, print error.
+        -- Right click to unset sync.
+        pings.remove_sync_to_fmp()
+        this:setToggled(false)
+        print("removing sync target.")
+    end)
 dance_action_wheel_page:setAction(2, sync_dance_with_nearest_music)
 
 local adjust_speed_action = action_wheel:newAction()
