@@ -42,31 +42,20 @@ dance_action_wheel_page:setAction(1, actions.exit_dace_wheel_page)
 local nearest_fmp_avatar_uuid = nil     ---@type UUID?
 local nearest_fmp_song_uuid = nil       ---@type UUID?
 
-
-local function pingless_remove_sync_to_fmp()
+local function remove_fmp_sync_data()
     nearest_fmp_avatar_uuid = nil
     nearest_fmp_song_uuid = nil
-    actions.sync_dance_with_nearest_music:setToggled(false)
-
-    -- TODO: add stop event loop logic
 end
-function pings.remove_sync_to_fmp() pingless_remove_sync_to_fmp() end
 
-
-local function pingless_sync_to_fmp(avatar_uuid, song_uuid)
-    if not (avatar_uuid and song_uuid) then
-        pingless_remove_sync_to_fmp()
-    else
-        nearest_fmp_avatar_uuid = avatar_uuid
-        nearest_fmp_song_uuid = song_uuid
-        actions.sync_dance_with_nearest_music:setToggled(true)
-
-        -- TODO: check if these are valid avatars and songs. they may be valid for host, but not for us.
-
-        -- TODO: add event loop starting logic.
-    end
+---@param avatar_uuid UUID
+---@param song_uuid UUID
+local function set_fmp_sync_data(avatar_uuid, song_uuid)
+    nearest_fmp_avatar_uuid = avatar_uuid
+    nearest_fmp_song_uuid = song_uuid
 end
-function pings.sync_to_fmp(avatar_uuid, song_uuid) pingless_sync_to_fmp(avatar_uuid, song_uuid) end
+
+
+
 
 local dances = {}
 
@@ -156,7 +145,6 @@ function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
     if host:isHost() then create_title_text_for_dance_selector(actions.select_dance_action) end
 end
 
-
 actions.select_dance_action = action_wheel:newAction()
     :item("minecraft:purple_dye")
     :onLeftClick(function(this)
@@ -189,7 +177,7 @@ actions.select_dance_action = action_wheel:newAction()
 dance_action_wheel_page:setAction(4, actions.select_dance_action)
 
 actions.sync_dance_with_nearest_music = action_wheel:newAction()
-    :title("Sync dance with nearest player")
+    :title("Sync dance with nearest player\nRight click to remove sync.")
     :item("minecraft:clock")
     :setToggled(false)
     :onLeftClick(function(this)
@@ -228,19 +216,17 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
         end
 
         if avatar_of_closest_song_so_far and closest_song_so_far then
-            pings.sync_to_fmp(avatar_of_closest_song_so_far, closest_song_so_far)
+            set_fmp_sync_data(avatar_of_closest_song_so_far, closest_song_so_far)
+            this:setToggled(true)
             print("Targeted song at ".. tostring(closest_song_position) .. "\n (".. math.floor(math.sqrt(squared_distance_of_closest_song_so_far)) .. " blocks away)\n",avatar_of_closest_song_so_far, closest_song_so_far)
         else
-            print("no nearby song. (right click to remove selection)")
+            print("no new nearby song.")
         end
-
-
 
     end)
     :onRightClick(function(this)
-        -- check for nearest FMP avatar with song. If none found, print error.
-        -- Right click to unset sync.
-        pings.remove_sync_to_fmp()
+        remove_fmp_sync_data()
+        this:setToggled(false)
         print("removing sync target.")
     end)
 dance_action_wheel_page:setAction(2, actions.sync_dance_with_nearest_music)
