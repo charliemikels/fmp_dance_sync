@@ -127,6 +127,36 @@ local function create_title_text_for_dance_selector(dance_selector_action)
 end
 
 
+function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
+    if (not animation_key) or (not dances[animation_key]) then -- animation is unset or invalid. Clean up state
+        -- stop_metronome_events()
+        if dance_state and dance_state.animation then dance_state.animation:stop() end
+        dance_state = nil
+
+    elseif dance_state then -- this ping is doing an update. no need to do a full reinitialize
+        dance_state.animation:stop()
+
+        dance_state.animation_key = animation_key
+        dance_state.animation = dances[animation_key].animation
+
+        dance_state.animation:play()
+
+    else    -- Set and start dance.
+        dance_state = {
+            animation_key = animation_key,
+            animation = dances[animation_key].animation,
+            song_avatar_id = nil,
+            playing_song_id = nil,
+        }
+
+        -- start_metronome_events()
+        dance_state.animation:play()
+    end
+
+    if host:isHost() then create_title_text_for_dance_selector(actions.select_dance_action) end
+end
+
+
 actions.select_dance_action = action_wheel:newAction()
     :item("minecraft:purple_dye")
     :onLeftClick(function(this)
@@ -323,34 +353,7 @@ end
 
 
 
-function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
-    if (not animation_key) or (not dances[animation_key]) then -- animation is unset or invalid. Clean up state
-        stop_metronome_events()
-        if dance_state and dance_state.animation then dance_state.animation:stop() end
-        dance_state = nil
 
-    elseif dance_state then -- this ping is doing an update. no need to do a full reinitialize
-        dance_state.animation:stop()
-
-        dance_state.animation_key = animation_key
-        dance_state.animation = dances[animation_key].animation
-
-        dance_state.animation:play()
-
-    else    -- Set and start dance.
-        dance_state = {
-            animation_key = animation_key,
-            animation = dances[animation_key].animation,
-            song_avatar_id = nil,
-            playing_song_id = nil,
-        }
-
-        start_metronome_events()
-        dance_state.animation:play()
-    end
-
-    if host:isHost() then create_title_text_for_dance_selector(actions.select_dance_action) end
-end
 
 events.ENTITY_INIT:register(function()
     -- print(animations:getAnimations())
