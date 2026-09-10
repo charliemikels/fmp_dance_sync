@@ -26,7 +26,7 @@ actions.enter_dance_menu = action_wheel:newAction()
     :item("minecraft:echo_shard")
     :onLeftClick(function()
         previous_action_wheel_page = action_wheel:getCurrentPage()
-        action_wheel:setPage(actions.dance_action_wheel_page)
+        action_wheel:setPage(dance_action_wheel_page)
     end)
 
 actions.exit_dace_wheel_page = action_wheel:newAction()
@@ -349,7 +349,7 @@ function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
         dance_state.animation:play()
     end
 
-    if host:isHost() then create_title_text_for_dance_selector(select_dance_action) end
+    if host:isHost() then create_title_text_for_dance_selector(actions.select_dance_action) end
 end
 
 events.ENTITY_INIT:register(function()
@@ -371,8 +371,8 @@ events.ENTITY_INIT:register(function()
         table.sort(sorted_dance_keys)
     end
 
-    create_title_text_for_dance_selector(select_dance_action)
+    create_title_text_for_dance_selector(actions.select_dance_action)
 end)
 
 
-return enter_dance_menu
+return actions.enter_dance_menu
