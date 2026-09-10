@@ -1,3 +1,5 @@
+vanilla_model.ALL:setVisible(false)
+
 local max_distance_to_be_near = 32
 
 local model_name = "Dance Test"
