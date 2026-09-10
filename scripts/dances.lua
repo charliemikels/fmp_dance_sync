@@ -10,8 +10,6 @@ local dance_metadata = {
     ["animation.model.dance.smug"] = { name = "Smug", item = "minecraft:purple_dye", beats_per_loop = 2},
 }
 
-
-
 keybinds:newKeybind(
     "Scroll dance list faster",
     keybinds:getVanillaKey("key.sprint")
@@ -122,7 +120,7 @@ local function create_title_text_for_dance_selector(dance_selector_action)
         if dance_state then
             title_text = title_text .. "\n\nCurrent Dance: " .. dance_state.animation_key
         end
-        -- title_text = title_text .. "\ndances found";
+        -- title_text = title_text .. "\n" .. "dances found";
     end
 
     dance_selector_action:title(title_text)
