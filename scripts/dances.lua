@@ -37,22 +37,8 @@ actions.exit_dace_wheel_page = action_wheel:newAction()
     end)
 dance_action_wheel_page:setAction(1, actions.exit_dace_wheel_page)
 
-
-local nearest_fmp_avatar_uuid = nil     ---@type UUID?
-local nearest_fmp_song_uuid = nil       ---@type UUID?
-
-local function remove_fmp_sync_data()
-    nearest_fmp_avatar_uuid = nil
-    nearest_fmp_song_uuid = nil
-end
-
----@param avatar_uuid UUID
----@param song_uuid UUID
-local function set_fmp_sync_data(avatar_uuid, song_uuid)
-    nearest_fmp_avatar_uuid = avatar_uuid
-    nearest_fmp_song_uuid = song_uuid
-end
-
+local host_selected_fmp_avatar_uuid = nil     ---@type UUID?
+local host_selected_fmp_song_uuid = nil       ---@type UUID?
 
 local dances = {}               ---@type {[string]: {name: string, animation:Animation}}
 local sorted_dance_keys = {}    ---@type string[]
@@ -161,6 +147,15 @@ actions.select_dance_action = action_wheel:newAction()
     end)
 dance_action_wheel_page:setAction(4, actions.select_dance_action)
 
+---@param avatar_uuid UUID?
+---@param song_uuid UUID?
+local function host_select_avatar_and_song(avatar_uuid, song_uuid)
+    host_selected_fmp_avatar_uuid = avatar_uuid
+    host_selected_fmp_song_uuid = song_uuid
+
+    -- TODO: see if animation is playing, and if so, send new sync data. Otherwise just set for next song selection.
+end
+
 actions.sync_dance_with_nearest_music = action_wheel:newAction()
     :title("Sync dance with nearest player\nRight click to remove sync.")
     :item("minecraft:clock")
@@ -201,7 +196,7 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
         end
 
         if avatar_of_closest_song_so_far and closest_song_so_far then
-            set_fmp_sync_data(avatar_of_closest_song_so_far, closest_song_so_far)
+            host_select_avatar_and_song(avatar_of_closest_song_so_far, closest_song_so_far)
             this:setToggled(true)
             print("Targeted song at ".. tostring(closest_song_position) .. "\n (".. math.floor(math.sqrt(squared_distance_of_closest_song_so_far)) .. " blocks away)\n",avatar_of_closest_song_so_far, closest_song_so_far)
         else
@@ -210,7 +205,7 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
 
     end)
     :onRightClick(function(this)
-        remove_fmp_sync_data()
+        host_select_avatar_and_song(nil, nil)
         this:setToggled(false)
         print("removing sync target.")
     end)
