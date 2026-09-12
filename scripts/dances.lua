@@ -5,10 +5,10 @@ local max_distance_to_be_near = 32
 local model_name = "Dance Test"
 
 -- a set of overrides for animations found that match.
-local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:number}}
+local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:integer}}
     ["animation.model.dance.head_bop"]  = { name = "Head Bop",  beats_per_loop = 2 },
     ["animation.model.dance.smug"]      = { name = "Smug",      beats_per_loop = 2 },
-    ["animation.model.dance.pikudance"] = { name = "Pikudance", beats_per_loop = 32},
+    ["animation.model.dance.pikudance"] = { name = "Pikudance", beats_per_loop = 16}, -- kinda intended to be 32 I think.
 }
 
 keybinds:newKeybind(
@@ -41,11 +41,14 @@ dance_action_wheel_page:setAction(1, actions.exit_dace_wheel_page)
 local host_selected_fmp_avatar_uuid = nil     ---@type UUID?
 local host_selected_fmp_song_uuid = nil       ---@type UUID?
 
-local dances                      = {}  ---@type {[string]: {name: string, animation:Animation}}
+local dances                      = {}  ---@type {[string]: {name: string, animation:Animation, beats_per_loop:integer}}
 local sorted_dance_keys           = {}  ---@type string[]
+
 local playing_dance_animation_key = nil ---@type string?
 local targeted_avatar_uuid        = nil ---@type UUID?
 local targeted_song_uuid          = nil ---@type UUID?
+
+local timeframe_of_last_metronome_data = nil ---@type number?
 
 ---@return boolean
 local function unsafe_targeted_song_is_valid()
@@ -87,6 +90,8 @@ local function sync_event_loop_function()
         return
 
     else
+        local music_api = world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"] ---@type SongPlayerExportedInfoApi
+
         if targeted_song_uuid and not targeted_song_is_valid() then
             -- last time, we thought the song was valid. But it is not. unset it.
             print("song is now invalid. waiting for targeted avatar to play something new.")
@@ -94,7 +99,6 @@ local function sync_event_loop_function()
         end
 
         if not targeted_song_uuid then -- Look for new song in avatar
-            local music_api = world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"] ---@type SongPlayerExportedInfoApi
             local all_songs_from_targeted_avatar = music_api.get_all_playing_song_uuids_and_positions()
 
             local target_position = player:getPos()
@@ -117,7 +121,25 @@ local function sync_event_loop_function()
         end
 
         if targeted_song_uuid then
-            -- TODO: Song is good and must be valid. Update animations (if needed)
+            local current_metronome_data = music_api.get_metronome_info(targeted_song_uuid)
+            local current_animation = dances[playing_dance_animation_key].animation
+            local num_beats_in_current_animation = dances[playing_dance_animation_key].beats_per_loop
+
+            current_animation:setSpeed(
+                (current_animation:getLength() * 1000 )     -- scale to milliseconds
+                / num_beats_in_current_animation            -- get length of beat in animation
+                / current_metronome_data.duration_of_beat   -- get multiplier to bring animation time into song time
+            )
+
+            -- In a perfect world, we would only need to do set time whenever the metronome actually changes.
+            -- But... precision errors are sometimes a thing. So manually set the time every tick anyways.
+            current_animation:setTime(
+                current_metronome_data.get_current_beat()
+                    % num_beats_in_current_animation    -- clamp to animation's beat range
+                    / num_beats_in_current_animation    -- convert to a "progress through animation"
+                    * current_animation:getLength()     -- scale back up to a set time
+            )
+
         end
     end
 end
@@ -184,10 +206,14 @@ function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid)
 
     if (not animation_key) or (not dances[animation_key]) then -- animation is unset or invalid. Clean up state
         -- stop_metronome_events()
-        if playing_dance_animation_key then dances[playing_dance_animation_key].animation:stop() end
+        if playing_dance_animation_key then
+            dances[playing_dance_animation_key].animation:setSpeed(nil)
+            dances[playing_dance_animation_key].animation:stop()
+        end
         playing_dance_animation_key = nil
 
     elseif playing_dance_animation_key then -- this ping is doing an update. no need to do a full reinitialize
+        dances[playing_dance_animation_key].animation:setSpeed(nil) -- reset just in case that if we later play this animation without syncing to an FMP
         dances[playing_dance_animation_key].animation:stop()
         playing_dance_animation_key = animation_key
         dances[playing_dance_animation_key].animation:play()
@@ -306,7 +332,8 @@ events.ENTITY_INIT:register(function()
 
             dances[name] = {
                 animation = animation,
-                name = (this_dance_metadata.name or name)
+                name = (this_dance_metadata.name or name),
+                beats_per_loop = (this_dance_metadata.beats_per_loop or 2)
             }
             table.insert(sorted_dance_keys, name)
         end
