@@ -46,6 +46,22 @@ local playing_dance_animation_key = nil ---@type string?
 local targeted_avatar_uuid = nil    ---@type UUID?
 local targeted_song_uuid = nil      ---@type UUID?
 
+local sync_event_loop_function_name = "TL_FMP_Watcher__"..client.intUUIDToString(client.generateUUID())
+local sync_event = events.TICK
+local function sync_event_loop_function()
+    -- TODO:
+    --  - Is dance running? If no: shut down loop
+    --  - Is target avatar valid? If no: purge state and shut down loop
+    --  - Is target song valid? If no: purge song ID and scan avatar for another song to use. return
+    --  - Check if the sync data has changed at all, and update playing animation to match.
+
+    print("Thank you for starting the event loop. I'm shutting down now.")
+    sync_event:remove(sync_event_loop_function)
+end
+
+local function start_sync_event_loop()
+    sync_event:register(sync_event_loop_function, sync_event_loop_function_name)
+end
 
 local dance_selector_state = {
     hover_index = 1,    ---@type integer
@@ -113,6 +129,10 @@ function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid)
         dances[playing_dance_animation_key].animation:play()
     end
 
+    if targeted_avatar_uuid and sync_event:getRegisteredCount(sync_event_loop_function_name) < 1 then
+        start_sync_event_loop()
+    end
+
     if host:isHost() then create_title_text_for_dance_selector(actions.select_dance_action) end
 end
 
@@ -126,7 +146,7 @@ actions.select_dance_action = action_wheel:newAction()
             pings.sync_dance(nil, nil, nil)  -- stop dance that's already playing
         else
             -- TODO: Get sync info from the sync action
-            pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], nil, nil)
+            pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid)
         end
 
         create_title_text_for_dance_selector(this)
@@ -142,7 +162,6 @@ actions.select_dance_action = action_wheel:newAction()
         if dance_selector_state.hover_index > #sorted_dance_keys then dance_selector_state.hover_index = 1 end
         if dance_selector_state.hover_index < 1 then dance_selector_state.hover_index = #sorted_dance_keys end
 
-
         create_title_text_for_dance_selector(this)
     end)
 dance_action_wheel_page:setAction(4, actions.select_dance_action)
@@ -153,6 +172,9 @@ local function host_select_avatar_and_song(avatar_uuid, song_uuid)
     host_selected_fmp_avatar_uuid = avatar_uuid
     host_selected_fmp_song_uuid = song_uuid
 
+    if playing_dance_animation_key then
+        pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid)
+    end
     -- TODO: see if animation is playing, and if so, send new sync data. Otherwise just set for next song selection.
 end
 
