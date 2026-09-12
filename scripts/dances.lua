@@ -6,8 +6,8 @@ local model_name = "Dance Test"
 
 -- a set of overrides for animations found that match.
 local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:number}}
-    ["animation.model.dance.head_bop"] = { name = "Head Bop", beats_per_loop = 2 },
-    ["animation.model.dance.smug"] = { name = "Smug", beats_per_loop = 2},
+    ["animation.model.dance.head_bop"]  = { name = "Head Bop",  beats_per_loop = 2 },
+    ["animation.model.dance.smug"]      = { name = "Smug",      beats_per_loop = 2 },
     ["animation.model.dance.pikudance"] = { name = "Pikudance", beats_per_loop = 32},
 }
 
@@ -41,11 +41,11 @@ dance_action_wheel_page:setAction(1, actions.exit_dace_wheel_page)
 local host_selected_fmp_avatar_uuid = nil     ---@type UUID?
 local host_selected_fmp_song_uuid = nil       ---@type UUID?
 
-local dances = {}               ---@type {[string]: {name: string, animation:Animation}}
-local sorted_dance_keys = {}    ---@type string[]
+local dances                      = {}  ---@type {[string]: {name: string, animation:Animation}}
+local sorted_dance_keys           = {}  ---@type string[]
 local playing_dance_animation_key = nil ---@type string?
-local targeted_avatar_uuid = nil    ---@type UUID?
-local targeted_song_uuid = nil      ---@type UUID?
+local targeted_avatar_uuid        = nil ---@type UUID?
+local targeted_song_uuid          = nil ---@type UUID?
 
 ---@return boolean
 local function unsafe_targeted_song_is_valid()
