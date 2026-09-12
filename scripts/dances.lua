@@ -203,6 +203,7 @@ dance_action_wheel_page:setAction(2, actions.sync_dance_with_nearest_music)
 actions.adjust_speed_action = action_wheel:newAction()
     :title("Adjust speed\nLeft Click to double\nRight Click to half")
     :item("minecraft:feather")
+    :onLeftClick(function(this) print(" -- TODO: actions.adjust_speed_action ")end)
 dance_action_wheel_page:setAction(3, actions.adjust_speed_action)
 
 
