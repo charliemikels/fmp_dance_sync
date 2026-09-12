@@ -169,17 +169,6 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
         local closest_song_so_far = nil
         local closest_song_position = nil
         local squared_distance_of_closest_song_so_far = math.huge
-            --     (nearest_fmp_avatar_uuid and nearest_fmp_song_uuid)
-            -- and (   world.avatarVars()[nearest_fmp_avatar_uuid]
-            --     and world.avatarVars()[nearest_fmp_avatar_uuid]["TL_FMP_exported_song_info_api"]
-            --     and (
-            --         (   world.avatarVars()[nearest_fmp_avatar_uuid]["TL_FMP_exported_song_info_api"].get_song_position(nearest_fmp_song_uuid)
-            --             - player:getPos()
-            --         ):lengthSquared()
-            --     )
-            -- )
-            -- or math.huge
-        -- print(squared_distance_of_closest_song_so_far)
 
         for avatar_uuid, avatar_vars in pairs(world.avatarVars()) do
             if avatar_vars["TL_FMP_exported_song_info_api"] and type(avatar_vars["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions) == "function" then
@@ -215,107 +204,6 @@ actions.adjust_speed_action = action_wheel:newAction()
     :title("Adjust speed\nLeft Click to double\nRight Click to half")
     :item("minecraft:feather")
 dance_action_wheel_page:setAction(3, actions.adjust_speed_action)
-
-
-
-
-
-
-
-local function start_metronome_events() end
-
-local function stop_metronome_events() end
-
-local known_avatars_with_tl_fmp = {}    ---@type table<UUID, {update_loop_fn: function?, music_api: SongPlayerExportedInfoApi}>
-local last_checked_uuid = nil
-
-
-local function has_api_changed(our_reference, external_api)
-    return our_reference.music_api.time_player_initialized() ~= external_api.time_player_initialized()
-end
-
-local function register_new_song(avatar_uuid, song_uuid)
-    local _ = known_avatars_with_tl_fmp[avatar_uuid].music_api
-    print("\nFound playing song:\n",avatar_uuid, song_uuid)
-end
-
----@param avatar_uuid UUID
----@param exported_info_api SongPlayerExportedInfoApi
-local function register_new_known_music_avatar(avatar_uuid, exported_info_api)
-    print("found avatar with TL_FMP", avatar_uuid)
-
-    known_avatars_with_tl_fmp[avatar_uuid] = {}
-    known_avatars_with_tl_fmp[avatar_uuid].music_api = exported_info_api
-
-    local song_uuids_and_pos = exported_info_api.get_all_playing_song_uuids_and_positions() ---@type table<UUID, Vector3>
-    for song_uuid, pos in pairs(song_uuids_and_pos) do register_new_song(avatar_uuid, song_uuid) end
-
-
-    -- exported_info_api.add_song_start_callback(function(song_uuid)
-    --     register_new_song(avatar_uuid, song_uuid)
-    -- end)
-end
-
-local function unregister_previously_known_player_avatar(avatar_uuid)
-    known_avatars_with_tl_fmp[avatar_uuid] = nil
-    -- TODO: stop any animations relying on this avatar
-end
-
--- local function check_next_avatar_for_song_player()
---     local fmp_avatar_uuid, this_avatar_vars = next(world.avatarVars(), world.avatarVars()[last_checked_uuid] and last_checked_uuid or nil)
---     last_checked_uuid = fmp_avatar_uuid
---     if fmp_avatar_uuid == nil then return end
-
---     if this_avatar_vars["TL_FMP_exported_song_info_api"] and not known_avatars_with_tl_fmp[fmp_avatar_uuid] then -- first time seeing this avatar with vars for TL_FMP
---         register_new_known_music_avatar(fmp_avatar_uuid, this_avatar_vars["TL_FMP_exported_song_info_api"])
---         return
---     end
-
---     local success, result = pcall(has_api_changed, known_avatars_with_tl_fmp[fmp_avatar_uuid], this_avatar_vars["TL_FMP_exported_song_info_api"])
---     if success and result then  -- Avatar was once valid and is not any more.
---         unregister_previously_known_player_avatar(fmp_avatar_uuid)
---     end
--- end
--- events.TICK:register(check_next_avatar_for_song_player)
-
-
-
-
-
-
-
--- events.TICK:register(function() -- passively find avatars with TL_FMP
-
---     -- check all avatars
-
---     local avatar_uuid, avatar_vars = next_world_var()
---     detect_and_record_new_fmp_avatars(avatar_uuid, avatar_vars)
---     detect_and_remove_now_invalid_fmp_avatars(avatar_uuid, avatar_vars)
-
---     -- specifically re-check the avatars we know have FMP
---     local fmp_avatar_uuid, fmp_exported_api = next_known_fmp_avatar()
---     local this_avatar_is_playing_at_least_one_song = fmp_exported_api and next(fmp_exported_api:get_all_playing_song_uuids_and_positions()) ~= nil
---     if this_avatar_is_playing_at_least_one_song then
---         if display_loop_event:getRegisteredCount(display_loop_name) < 1 then -- start display event if it's not running yet.
---             display_loop_event:register(display_loop, display_loop_name)
---         end
-
---         local success, current_nearest_song_position = pcall(function() return apis_for_known_fmp_avatars[nearest_song_avatar_uuid].get_song_position(nearest_song_uuid) end)
---         local current_song_distance_to_player = success and current_nearest_song_position
---             and (client:getCameraPos() - current_nearest_song_position):lengthSquared()
---             or math.huge -- set distance to beat.
-
---         for test_song_uuid, test_song_position in pairs(apis_for_known_fmp_avatars[fmp_avatar_uuid]:get_all_playing_song_uuids_and_positions()) do
---             local test_song_distance_to_camera = (client:getCameraPos() - test_song_position):lengthSquared()
---             if test_song_distance_to_camera < current_song_distance_to_player then
---                 current_song_distance_to_player = test_song_distance_to_camera
---                 nearest_song_avatar_uuid = fmp_avatar_uuid
---                 nearest_song_uuid = test_song_uuid
---             end
---         end
---     end
--- end)
-
 
 
 
