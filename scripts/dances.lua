@@ -69,6 +69,7 @@ local dance_selector_state = {
     selected_id = nil   ---@type integer?
 }
 local num_songs_to_display_in_selector = 16
+---@param dance_selector_action Action
 local function create_title_text_for_dance_selector(dance_selector_action)
     local title_text = "Select dance\n"
 
@@ -110,7 +111,10 @@ local function create_title_text_for_dance_selector(dance_selector_action)
     dance_selector_action:title(title_text)
 end
 
-
+---Main throughway to sync updates to listeners. if animation_key is nil, dance will stopped.
+---@param animation_key UUID?
+---@param fmp_avatar_uuid UUID?
+---@param playing_song_uuid UUID?
 function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid)
     targeted_avatar_uuid = fmp_avatar_uuid
     targeted_song_uuid = playing_song_uuid
@@ -140,13 +144,9 @@ end
 actions.select_dance_action = action_wheel:newAction()
     :item("minecraft:purple_dye")
     :onLeftClick(function(this)
-        print("clicked")
-        print(dances[sorted_dance_keys[dance_selector_state.hover_index]])
-
         if playing_dance_animation_key and playing_dance_animation_key == sorted_dance_keys[dance_selector_state.hover_index] then
             pings.sync_dance(nil, nil, nil)  -- stop dance that's already playing
         else
-            -- TODO: Get sync info from the sync action
             pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid)
         end
 
