@@ -79,26 +79,51 @@ local function sync_event_loop_function()
         sync_event:remove(sync_event_loop_function)
         return
 
-    elseif targeted_avatar_uuid and not targeted_avatar_is_valid() then
+    elseif not (targeted_avatar_uuid and targeted_avatar_is_valid()) then
+        -- targeted_avatar_uuid is invalid. kill loop and set to nil for next time.
         print("Killing loop because target avatar is invalid.")
         targeted_avatar_uuid = nil
         sync_event:remove(sync_event_loop_function)
         return
 
-    elseif targeted_song_uuid and not targeted_song_is_valid() then
-        -- song is invalid now. But... that might be ok?
-        print("song is now invalid. waiting for targeted avatar to play something new.")
-        targeted_song_uuid = nil
+    else
+        if targeted_song_uuid and not targeted_song_is_valid() then
+            -- last time, we thought the song was valid. But it is not. unset it.
+            print("song is now invalid. waiting for targeted avatar to play something new.")
+            targeted_song_uuid = nil
+        end
 
+        if not targeted_song_uuid then -- Look for new song in avatar
+            local music_api = world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"] ---@type SongPlayerExportedInfoApi
+            local all_songs_from_targeted_avatar = music_api.get_all_playing_song_uuids_and_positions()
+
+            local target_position = player:getPos()
+            local distance_of_nearest_squared = math.huge
+            local current_nearest_song_uuid = nil
+
+            for test_song_uuid, test_song_position in pairs(all_songs_from_targeted_avatar) do
+                local distance_squared_to_test_song = (test_song_position - target_position):lengthSquared()
+                if distance_squared_to_test_song < distance_of_nearest_squared then
+                    current_nearest_song_uuid = test_song_uuid
+                    distance_of_nearest_squared = distance_squared_to_test_song
+                end
+            end
+
+            if current_nearest_song_uuid then
+                print("new song found. syncing to that.")
+            end
+
+            targeted_song_uuid = current_nearest_song_uuid
+        end
+
+        if targeted_song_uuid then
+            -- TODO: Song is good and must be valid. Update animations (if needed)
+        end
     end
-
-    -- TODO:
-    --  - Scan for new songs iv song_id is nil, but avatar is valid
-    --  - Check if the sync data has changed at all, and update playing animation to match.
-
 end
 
 local function start_sync_event_loop()
+    print("Starting loop")
     sync_event:register(sync_event_loop_function, sync_event_loop_function_name)
 end
 
