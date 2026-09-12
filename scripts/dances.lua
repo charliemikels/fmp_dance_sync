@@ -5,9 +5,9 @@ local max_distance_to_be_near = 32
 local model_name = "Dance Test"
 
 -- a set of overrides for animations found that match.
-local dance_metadata = {
-    ["animation.model.dance.head_bop"] = { name = "Head Bop", item = "minecraft:player_head", beats_per_loop = 2 },
-    ["animation.model.dance.smug"] = { name = "Smug", item = "minecraft:purple_dye", beats_per_loop = 2},
+local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:number}}
+    ["animation.model.dance.head_bop"] = { name = "Head Bop", beats_per_loop = 2 },
+    ["animation.model.dance.smug"] = { name = "Smug", beats_per_loop = 2},
 }
 
 keybinds:newKeybind(
@@ -15,11 +15,10 @@ keybinds:newKeybind(
     keybinds:getVanillaKey("key.sprint")
 )
 
-local actions = {}
-
+local actions = {}  ---@type {[string]: Action}
 
 local dance_action_wheel_page = action_wheel:newPage()
-local previous_action_wheel_page = nil
+local previous_action_wheel_page = nil  ---@type Page?
 
 actions.enter_dance_menu = action_wheel:newAction()
     :title("Dances")
@@ -55,24 +54,17 @@ local function set_fmp_sync_data(avatar_uuid, song_uuid)
 end
 
 
+local dances = {}               ---@type {[string]: {name: string, animation:Animation}}
+local sorted_dance_keys = {}    ---@type string[]
+local playing_dance_animation_key = nil ---@type string?
+local targeted_avatar_uuid = nil    ---@type UUID?
+local targeted_song_uuid = nil      ---@type UUID?
 
-
-local dances = {}
-
-local sorted_dance_keys = {}
-
-local dance_state = nil --{
---     animation = nil,
---     song_avatar_id = nil,
---     playing_song_id = nil,
--- }
 
 local dance_selector_state = {
-    hover_index = 1,  ---@type integer
+    hover_index = 1,    ---@type integer
     selected_id = nil   ---@type integer?
 }
-
-
 local num_songs_to_display_in_selector = 16
 local function create_title_text_for_dance_selector(dance_selector_action)
     local title_text = "Select dance\n"
@@ -100,14 +92,14 @@ local function create_title_text_for_dance_selector(dance_selector_action)
 
             local this_row_string = "\n"
                 .. (index == dance_selector_state.hover_index and "→" or "  ")
-                .. (dance_state and this_row_dance_id == dance_state.animation_key and "♬" or "  ")
+                .. (playing_dance_animation_key and this_row_dance_id == playing_dance_animation_key and "♬" or "  ")
                 .. this_row_dance.name
 
             title_text = title_text .. this_row_string
         end
 
-        if dance_state then
-            title_text = title_text .. "\n\nCurrent Dance: " .. dance_state.animation_key
+        if playing_dance_animation_key then
+            title_text = title_text .. "\n\nCurrent Dance: " .. playing_dance_animation_key
         end
         -- title_text = title_text .. "\n" .. "dances found";
     end
@@ -116,30 +108,23 @@ local function create_title_text_for_dance_selector(dance_selector_action)
 end
 
 
-function pings.set_dance(animation_key, song_avatar_id, playing_song_id)
+function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid)
+    targeted_avatar_uuid = fmp_avatar_uuid
+    targeted_song_uuid = playing_song_uuid
+
     if (not animation_key) or (not dances[animation_key]) then -- animation is unset or invalid. Clean up state
         -- stop_metronome_events()
-        if dance_state and dance_state.animation then dance_state.animation:stop() end
-        dance_state = nil
+        if playing_dance_animation_key then dances[playing_dance_animation_key].animation:stop() end
+        playing_dance_animation_key = nil
 
-    elseif dance_state then -- this ping is doing an update. no need to do a full reinitialize
-        dance_state.animation:stop()
-
-        dance_state.animation_key = animation_key
-        dance_state.animation = dances[animation_key].animation
-
-        dance_state.animation:play()
+    elseif playing_dance_animation_key then -- this ping is doing an update. no need to do a full reinitialize
+        dances[playing_dance_animation_key].animation:stop()
+        playing_dance_animation_key = animation_key
+        dances[playing_dance_animation_key].animation:play()
 
     else    -- Set and start dance.
-        dance_state = {
-            animation_key = animation_key,
-            animation = dances[animation_key].animation,
-            song_avatar_id = nil,
-            playing_song_id = nil,
-        }
-
-        -- start_metronome_events()
-        dance_state.animation:play()
+        playing_dance_animation_key = animation_key
+        dances[playing_dance_animation_key].animation:play()
     end
 
     if host:isHost() then create_title_text_for_dance_selector(actions.select_dance_action) end
@@ -151,11 +136,11 @@ actions.select_dance_action = action_wheel:newAction()
         print("clicked")
         print(dances[sorted_dance_keys[dance_selector_state.hover_index]])
 
-        if dance_state and dance_state.animation_key == sorted_dance_keys[dance_selector_state.hover_index] then
-            pings.set_dance(nil, nil, nil)  -- stop dance that's already playing
+        if playing_dance_animation_key and playing_dance_animation_key == sorted_dance_keys[dance_selector_state.hover_index] then
+            pings.sync_dance(nil, nil, nil)  -- stop dance that's already playing
         else
             -- TODO: Get sync info from the sync action
-            pings.set_dance(sorted_dance_keys[dance_selector_state.hover_index], nil, nil)
+            pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], nil, nil)
         end
 
         create_title_text_for_dance_selector(this)
