@@ -47,17 +47,55 @@ local playing_dance_animation_key = nil ---@type string?
 local targeted_avatar_uuid = nil    ---@type UUID?
 local targeted_song_uuid = nil      ---@type UUID?
 
+---@return boolean
+local function unsafe_targeted_song_is_valid()
+    return world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions()[targeted_song_uuid] ~= nil
+end
+
+---@return boolean
+local function targeted_song_is_valid()
+    local success, result = pcall(unsafe_targeted_song_is_valid)
+    return (success and result)
+end
+
+---@return boolean
+local function unsafe_targeted_avatar_is_valid()
+    return targeted_avatar_uuid and type(world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions) == "function"
+end
+
+---@return boolean
+local function targeted_avatar_is_valid()
+    local success, result = pcall(unsafe_targeted_avatar_is_valid)
+    return (success and result)
+end
+
 local sync_event_loop_function_name = "TL_FMP_Watcher__"..client.intUUIDToString(client.generateUUID())
 local sync_event = events.TICK
 local function sync_event_loop_function()
+    if not playing_dance_animation_key
+        -- or (dances[playing_dance_animation_key] and dances[playing_dance_animation_key].animation:getPlayState() ~= "PLAYING")
+    then
+        print("Killing loop because dance is invalid or has stopped.")
+        sync_event:remove(sync_event_loop_function)
+        return
+
+    elseif targeted_avatar_uuid and not targeted_avatar_is_valid() then
+        print("Killing loop because target avatar is invalid.")
+        targeted_avatar_uuid = nil
+        sync_event:remove(sync_event_loop_function)
+        return
+
+    elseif targeted_song_uuid and not targeted_song_is_valid() then
+        -- song is invalid now. But... that might be ok?
+        print("song is now invalid. waiting for targeted avatar to play something new.")
+        targeted_song_uuid = nil
+
+    end
+
     -- TODO:
-    --  - Is dance running? If no: shut down loop
-    --  - Is target avatar valid? If no: purge state and shut down loop
-    --  - Is target song valid? If no: purge song ID and scan avatar for another song to use. return
+    --  - Scan for new songs iv song_id is nil, but avatar is valid
     --  - Check if the sync data has changed at all, and update playing animation to match.
 
-    print("Thank you for starting the event loop. I'm shutting down now.")
-    sync_event:remove(sync_event_loop_function)
 end
 
 local function start_sync_event_loop()
@@ -195,7 +233,8 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
 
         for avatar_uuid, avatar_vars in pairs(world.avatarVars()) do
             if avatar_vars["TL_FMP_exported_song_info_api"] and type(avatar_vars["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions) == "function" then
-                for song_uuid, song_position in pairs(avatar_vars["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions()) do
+                local detected_fmp_avatar_vars = avatar_vars["TL_FMP_exported_song_info_api"] ---@type SongPlayerExportedInfoApi
+                for song_uuid, song_position in pairs(detected_fmp_avatar_vars.get_all_playing_song_uuids_and_positions()) do
                     local test_distance = (player:getPos() - song_position):lengthSquared()
                     if test_distance < squared_distance_of_closest_song_so_far then
                         avatar_of_closest_song_so_far = avatar_uuid
