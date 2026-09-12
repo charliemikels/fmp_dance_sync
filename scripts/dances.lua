@@ -8,6 +8,7 @@ local model_name = "Dance Test"
 local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:number}}
     ["animation.model.dance.head_bop"] = { name = "Head Bop", beats_per_loop = 2 },
     ["animation.model.dance.smug"] = { name = "Smug", beats_per_loop = 2},
+    ["animation.model.dance.pikudance"] = { name = "Pikudance", beats_per_loop = 32},
 }
 
 keybinds:newKeybind(
