@@ -1,9 +1,5 @@
 vanilla_model.ALL:setVisible(false)
 
-local max_distance_to_be_near = 32
-
-local model_name = "Dance Test"
-
 -- a set of overrides for animations found that match.
 local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:integer}}
     ["animation.model.dance.head_bop"]  = { name = "Head Bop",  beats_per_loop = 2 },
@@ -49,8 +45,6 @@ local playing_dance_animation_key = nil ---@type string?
 local targeted_animation_multiplier = 1 ---@type number
 local targeted_avatar_uuid        = nil ---@type UUID?
 local targeted_song_uuid          = nil ---@type UUID?
-
-local timeframe_of_last_metronome_data = nil ---@type number?
 
 ---@return boolean
 local function unsafe_targeted_song_is_valid()
@@ -263,6 +257,7 @@ actions.select_dance_action = action_wheel:newAction()
     end)
 dance_action_wheel_page:setAction(4, actions.select_dance_action)
 
+--- Strictly speaking, this function isn't really necessary since the dance sync loop is more than happy to recover from no playing songs.
 ---@param avatar_uuid UUID?
 ---@param song_uuid UUID?
 local function host_select_avatar_and_song(avatar_uuid, song_uuid)
@@ -272,7 +267,6 @@ local function host_select_avatar_and_song(avatar_uuid, song_uuid)
     if playing_dance_animation_key then
         pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier)
     end
-    -- TODO: see if animation is playing, and if so, send new sync data. Otherwise just set for next song selection.
 end
 
 actions.sync_dance_with_nearest_music = action_wheel:newAction()
@@ -366,7 +360,7 @@ dance_action_wheel_page:setAction(3, actions.adjust_speed_action)
 
 events.ENTITY_INIT:register(function()
     -- print(animations:getAnimations())
-    for i, animation in pairs(animations:getAnimations()) do
+    for _, animation in pairs(animations:getAnimations()) do
         local name = animation:getName()
         if string.find(name, ".dance.") then
             local this_dance_metadata = dance_metadata[name] or {}
