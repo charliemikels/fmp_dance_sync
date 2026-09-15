@@ -80,13 +80,13 @@ local function sync_event_loop_function()
     if not playing_dance_animation_key
         -- or (dances[playing_dance_animation_key] and dances[playing_dance_animation_key].animation:getPlayState() ~= "PLAYING")
     then
-        if host:isHost() then print("Killing dance loop because dance is invalid or has stopped.") end
+        if host:isHost() then print("Killing dance sync loop. (Dance was stopped)") end
         sync_event:remove(sync_event_loop_function)
         return
 
     elseif not (targeted_avatar_uuid and targeted_avatar_is_valid()) then
         -- targeted_avatar_uuid is invalid. kill loop and set to nil for next time.
-        if host:isHost() then print("Killing loop because target avatar is invalid.") end
+        if host:isHost() then print("Killing dance sync loop. (Target avatar is invalid.)") end
         targeted_avatar_uuid = nil
         sync_event:remove(sync_event_loop_function)
         return
@@ -96,7 +96,7 @@ local function sync_event_loop_function()
 
         if targeted_song_uuid and not targeted_song_is_valid() then
             -- last time, we thought the song was valid. But it is not. unset it.
-            if host:isHost() then print("song is now invalid. waiting for targeted avatar to play something new.") end
+            -- if host:isHost() then print("Dance Sync: Waiting for targeted avatar to play something new.") end
             targeted_song_uuid = nil
         end
 
@@ -115,9 +115,9 @@ local function sync_event_loop_function()
                 end
             end
 
-            if current_nearest_song_uuid then
-                if host:isHost() then print("new song found. syncing to that.") end
-            end
+            -- if current_nearest_song_uuid then
+            --     if host:isHost() then print("new song found. syncing to that.") end
+            -- end
 
             targeted_song_uuid = current_nearest_song_uuid
         end
