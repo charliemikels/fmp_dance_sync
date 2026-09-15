@@ -1,4 +1,6 @@
 
+if not host:isHost() then return end    -- a purely host-only visualizer. Bail out if we are the viewer.
+
 -- Small example script for using the external data system.
 --
 -- Constantly Searches the world vars for instances of TL_FMP, and checks for any playing songs.
