@@ -131,12 +131,14 @@ local function sync_event_loop_function()
                 (current_animation:getLength() * 1000 )     -- scale to milliseconds
                 / num_beats_in_current_animation            -- get length of beat in animation
                 / current_metronome_data.duration_of_beat   -- get multiplier to bring animation time into song time
+                * targeted_animation_multiplier             -- manual adjustment from UI
             )
 
             -- In a perfect world, we would only need to do set time whenever the metronome actually changes.
             -- But... precision errors are sometimes a thing. So manually set the time every tick anyways.
             current_animation:setTime(
                 current_metronome_data.get_current_beat()
+                    * targeted_animation_multiplier     -- manual adjustment from UI
                     % num_beats_in_current_animation    -- clamp to animation's beat range
                     / num_beats_in_current_animation    -- convert to a "progress through animation"
                     * current_animation:getLength()     -- scale back up to a set time
@@ -202,7 +204,7 @@ end
 ---@param animation_key UUID?
 ---@param fmp_avatar_uuid UUID?
 ---@param playing_song_uuid UUID?
----@param multiplier number? -- How much faster the animation should play than usual.
+---@param multiplier number -- How much faster the animation should play than usual.
 function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid, multiplier)
     targeted_avatar_uuid = fmp_avatar_uuid
     targeted_song_uuid = playing_song_uuid
@@ -217,15 +219,15 @@ function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid, mul
         end
         playing_dance_animation_key = nil
 
-    elseif playing_dance_animation_key then -- this ping is doing an update. no need to do a full reinitialize
-        dances[playing_dance_animation_key].animation:setSpeed(nil) -- reset just in case that if we later play this animation without syncing to an FMP
-        dances[playing_dance_animation_key].animation:stop()
-        playing_dance_animation_key = animation_key
-        dances[playing_dance_animation_key].animation:play()
+    else
+        if playing_dance_animation_key then -- this ping is doing an update. no need to do a full reinitialize
+            dances[playing_dance_animation_key].animation:setSpeed(nil) -- reset just in case that if we later play this animation without syncing to an FMP
+            dances[playing_dance_animation_key].animation:stop()
+        end
 
-    else    -- Set and start dance.
         playing_dance_animation_key = animation_key
         dances[playing_dance_animation_key].animation:play()
+        dances[playing_dance_animation_key].animation:setSpeed(targeted_animation_multiplier)
     end
 
     if targeted_avatar_uuid and sync_event:getRegisteredCount(sync_event_loop_function_name) < 1 then
@@ -239,9 +241,9 @@ actions.select_dance_action = action_wheel:newAction()
     :item("minecraft:purple_dye")
     :onLeftClick(function(this)
         if playing_dance_animation_key and playing_dance_animation_key == sorted_dance_keys[dance_selector_state.hover_index] then
-            pings.sync_dance(nil, nil, nil)  -- stop dance that's already playing
+            pings.sync_dance(nil, nil, nil, 1)  -- stop dance that's already playing
         else
-            pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid)
+            pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier)
         end
 
         create_title_text_for_dance_selector(this)
@@ -268,7 +270,7 @@ local function host_select_avatar_and_song(avatar_uuid, song_uuid)
     host_selected_fmp_song_uuid = song_uuid
 
     if playing_dance_animation_key then
-        pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid)
+        pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier)
     end
     -- TODO: see if animation is playing, and if so, send new sync data. Otherwise just set for next song selection.
 end
@@ -342,6 +344,9 @@ local function adjust_speed_action_click_function(action, direction)
     if possible_multipliers[new_index] then
         host_selected_animation_multiplier = possible_multipliers[new_index]
         starting_index = new_index
+        if playing_dance_animation_key then -- we're playing a song right now, Update speed now.
+            pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier )
+        end
     else
         print("Reached ".. (direction > 0 and "fastest" or "slowest") .." speed.")
     end
