@@ -1,10 +1,10 @@
 vanilla_model.ALL:setVisible(false)
 
 -- a set of overrides for animations found that match.
-local dance_metadata = {    ---@type {[string]: {name:string, beats_per_loop:integer}}
-    ["animation.model.dance.head_bop"]  = { name = "Head Bop",  beats_per_loop = 2 },
-    ["animation.model.dance.smug"]      = { name = "Smug",      beats_per_loop = 2 },
-    ["animation.model.dance.pikudance"] = { name = "Pikudance", beats_per_loop = 16}, -- kinda intended to be 32 I think.
+local dance_metadata = { ---@type {[string]: {name:string, beats_per_loop:integer}}
+    ["animation.model.dance.head_bop"]  = { name = "Head Bop", beats_per_loop = 2 },
+    ["animation.model.dance.smug"]      = { name = "Smug", beats_per_loop = 2 },
+    ["animation.model.dance.pikudance"] = { name = "Pikudance", beats_per_loop = 16 }, -- kinda intended to be 32 I think.
 }
 
 keybinds:newKeybind(
@@ -12,10 +12,10 @@ keybinds:newKeybind(
     keybinds:getVanillaKey("key.sprint")
 )
 
-local actions = {}  ---@type {[string]: Action}
+local actions = {} ---@type {[string]: Action}
 
 local dance_action_wheel_page = action_wheel:newPage()
-local previous_action_wheel_page = nil  ---@type Page?
+local previous_action_wheel_page = nil ---@type Page?
 
 actions.enter_dance_menu = action_wheel:newAction()
     :title("Dances")
@@ -34,21 +34,28 @@ actions.exit_dace_wheel_page = action_wheel:newAction()
     end)
 dance_action_wheel_page:setAction(1, actions.exit_dace_wheel_page)
 
-local host_selected_fmp_avatar_uuid = nil     ---@type UUID?
-local host_selected_fmp_song_uuid = nil       ---@type UUID?
-local host_selected_animation_multiplier = 1 ---@type number
+local host_selected_fmp_avatar_uuid      = nil ---@type UUID?
+local host_selected_fmp_song_uuid        = nil ---@type UUID?
+local host_selected_animation_multiplier = 1   ---@type number
 
-local dances                      = {}  ---@type {[string]: {name: string, animation:Animation, beats_per_loop:integer}}
-local sorted_dance_keys           = {}  ---@type string[]
+local dances                             = {}  ---@type {[string]: {name: string, animation:Animation, beats_per_loop:integer}}
+local sorted_dance_keys                  = {}  ---@type string[]
 
-local playing_dance_animation_key = nil ---@type string?
-local targeted_animation_multiplier = 1 ---@type number
-local targeted_avatar_uuid        = nil ---@type UUID?
-local targeted_song_uuid          = nil ---@type UUID?
+local playing_dance_animation_key        = nil ---@type string?
+local targeted_animation_multiplier      = 1   ---@type number
+local targeted_avatar_uuid               = nil ---@type UUID?
+local targeted_song_uuid                 = nil ---@type UUID?
 
 ---@return boolean
 local function unsafe_targeted_song_is_valid()
-    return world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions()[targeted_song_uuid] ~= nil
+    return (
+        world.avatarVars()
+            [targeted_avatar_uuid]
+            ["TL_FMP_exported_song_info_api"]
+            .get_all_playing_song_uuids_and_positions()
+            [targeted_song_uuid]
+        ~= nil
+    )
 end
 
 ---@return boolean
@@ -59,7 +66,15 @@ end
 
 ---@return boolean
 local function unsafe_targeted_avatar_is_valid()
-    return targeted_avatar_uuid and type(world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"].get_all_playing_song_uuids_and_positions) == "function"
+    return (
+        targeted_avatar_uuid
+        and type(
+                world.avatarVars()
+                    [targeted_avatar_uuid]
+                    ["TL_FMP_exported_song_info_api"]
+                .get_all_playing_song_uuids_and_positions
+            ) == "function"
+    )
 end
 
 ---@return boolean
@@ -68,23 +83,21 @@ local function targeted_avatar_is_valid()
     return (success and result)
 end
 
-local sync_event_loop_function_name = "TL_FMP_Watcher__"..client.intUUIDToString(client.generateUUID())
+local sync_event_loop_function_name = "TL_FMP_Watcher__" .. client.intUUIDToString(client.generateUUID())
 local sync_event = events.TICK
 local function sync_event_loop_function()
     if not playing_dance_animation_key
-        -- or (dances[playing_dance_animation_key] and dances[playing_dance_animation_key].animation:getPlayState() ~= "PLAYING")
+    -- or (dances[playing_dance_animation_key] and dances[playing_dance_animation_key].animation:getPlayState() ~= "PLAYING")
     then
         if host:isHost() then print("Killing dance sync loop. (Dance was stopped)") end
         sync_event:remove(sync_event_loop_function)
         return
-
     elseif not (targeted_avatar_uuid and targeted_avatar_is_valid()) then
         -- targeted_avatar_uuid is invalid. kill loop and set to nil for next time.
         if host:isHost() then print("Killing dance sync loop. (Target avatar is invalid.)") end
         targeted_avatar_uuid = nil
         sync_event:remove(sync_event_loop_function)
         return
-
     else
         local music_api = world.avatarVars()[targeted_avatar_uuid]["TL_FMP_exported_song_info_api"] ---@type SongPlayerExportedInfoApi
 
@@ -122,22 +135,21 @@ local function sync_event_loop_function()
             local num_beats_in_current_animation = dances[playing_dance_animation_key].beats_per_loop
 
             current_animation:setSpeed(
-                (current_animation:getLength() * 1000 )     -- scale to milliseconds
-                / num_beats_in_current_animation            -- get length of beat in animation
-                / current_metronome_data.duration_of_beat   -- get multiplier to bring animation time into song time
-                * targeted_animation_multiplier             -- manual adjustment from UI
+                (current_animation:getLength() * 1000)    -- scale to milliseconds
+                / num_beats_in_current_animation          -- get length of beat in animation
+                / current_metronome_data.duration_of_beat -- get multiplier to bring animation time into song time
+                * targeted_animation_multiplier           -- manual adjustment from UI
             )
 
             -- In a perfect world, we would only need to do set time whenever the metronome actually changes.
             -- But... precision errors are sometimes a thing. So manually set the time every tick anyways.
             current_animation:setTime(
                 current_metronome_data.get_current_beat()
-                    * targeted_animation_multiplier     -- manual adjustment from UI
-                    % num_beats_in_current_animation    -- clamp to animation's beat range
-                    / num_beats_in_current_animation    -- convert to a "progress through animation"
-                    * current_animation:getLength()     -- scale back up to a set time
+                * targeted_animation_multiplier  -- manual adjustment from UI
+                % num_beats_in_current_animation -- clamp to animation's beat range
+                / num_beats_in_current_animation -- convert to a "progress through animation"
+                * current_animation:getLength()  -- scale back up to a set time
             )
-
         end
     end
 end
@@ -148,8 +160,8 @@ local function start_sync_event_loop()
 end
 
 local dance_selector_state = {
-    hover_index = 1,    ---@type integer
-    selected_id = nil   ---@type integer?
+    hover_index = 1, ---@type integer
+    selected_id = nil, ---@type integer?
 }
 local num_songs_to_display_in_selector = 16
 ---@param dance_selector_action Action
@@ -159,7 +171,6 @@ local function create_title_text_for_dance_selector(dance_selector_action)
     if not next(sorted_dance_keys) then
         title_text = title_text .. "No dances found"
     else
-
         -- get index range
         local start_index = dance_selector_state.hover_index - math.floor(num_songs_to_display_in_selector / 2)
         local end_index = start_index + num_songs_to_display_in_selector
@@ -167,10 +178,10 @@ local function create_title_text_for_dance_selector(dance_selector_action)
         -- Don't over-scroll if near the start or end of the list
         if start_index < 1 then
             start_index = 1
-            end_index = math.min(#sorted_dance_keys, num_songs_to_display_in_selector +1)
+            end_index = math.min(#sorted_dance_keys, num_songs_to_display_in_selector + 1)
         elseif end_index > #sorted_dance_keys then
             end_index = #sorted_dance_keys
-            start_index = math.max(end_index - num_songs_to_display_in_selector ,1)
+            start_index = math.max(end_index - num_songs_to_display_in_selector, 1)
         end
 
         for index = start_index, end_index do
@@ -212,9 +223,8 @@ function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid, mul
             dances[playing_dance_animation_key].animation:stop()
         end
         playing_dance_animation_key = nil
-
     else
-        if playing_dance_animation_key then -- this ping is doing an update. no need to do a full reinitialize
+        if playing_dance_animation_key then                             -- this ping is doing an update. no need to do a full reinitialize
             dances[playing_dance_animation_key].animation:setSpeed(nil) -- reset just in case that if we later play this animation without syncing to an FMP
             dances[playing_dance_animation_key].animation:stop()
         end
@@ -235,9 +245,14 @@ actions.select_dance_action = action_wheel:newAction()
     :item("minecraft:purple_dye")
     :onLeftClick(function(this)
         if playing_dance_animation_key and playing_dance_animation_key == sorted_dance_keys[dance_selector_state.hover_index] then
-            pings.sync_dance(nil, nil, nil, 1)  -- stop dance that's already playing
+            pings.sync_dance(nil, nil, nil, 1) -- stop dance that's already playing
         else
-            pings.sync_dance(sorted_dance_keys[dance_selector_state.hover_index], host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier)
+            pings.sync_dance(
+                sorted_dance_keys[dance_selector_state.hover_index],
+                host_selected_fmp_avatar_uuid,
+                host_selected_fmp_song_uuid,
+                host_selected_animation_multiplier
+            )
         end
 
         create_title_text_for_dance_selector(this)
@@ -265,7 +280,10 @@ local function host_select_avatar_and_song(avatar_uuid, song_uuid)
     host_selected_fmp_song_uuid = song_uuid
 
     if playing_dance_animation_key then
-        pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier)
+        pings.sync_dance(
+            playing_dance_animation_key, host_selected_fmp_avatar_uuid,
+            host_selected_fmp_song_uuid, host_selected_animation_multiplier
+        )
     end
 end
 
@@ -274,8 +292,6 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
     :item("minecraft:clock")
     :setToggled(false)
     :onLeftClick(function(this)
-        -- check for nearest FMP avatar with song. If none found, print error.
-
         -- Unlike the passive song viewer, we don't actually need to constantly search. We can just re-scan everyone once on demand.
 
         local avatar_of_closest_song_so_far = nil
@@ -301,11 +317,10 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
         if avatar_of_closest_song_so_far and closest_song_so_far then
             host_select_avatar_and_song(avatar_of_closest_song_so_far, closest_song_so_far)
             this:setToggled(true)
-            print("Targeted song at ".. tostring(closest_song_position))
+            print("Targeted song at " .. tostring(closest_song_position))
         else
             print("no new nearby song.")
         end
-
     end)
     :onRightClick(function(this)
         host_select_avatar_and_song(nil, nil)
@@ -315,9 +330,12 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
 dance_action_wheel_page:setAction(2, actions.sync_dance_with_nearest_music)
 
 
-local starting_index = 0    -- What's THIS‽ Index by Zero! In **MY** Lua code? It's more likely than you think.
-local possible_multipliers = {[0] = 1, 2, 3, 4, 6, 8}
-for i = 1, #possible_multipliers, 1 do possible_multipliers[ -i ] = 1/possible_multipliers[i] end  -- fill table with reciprocal values.
+local starting_index = 0 -- What's THIS‽ Index by Zero! In **MY** Lua code? It's more likely than you think.
+local possible_multipliers = { [0] = 1, 2, 3, 4, 6, 8 }
+for i = 1, #possible_multipliers, 1 do
+    -- fill table with reciprocal values.
+    possible_multipliers[-i] = 1 / possible_multipliers[i]
+end
 
 
 local function adjust_speed_title_string_getter()
@@ -326,7 +344,7 @@ local function adjust_speed_title_string_getter()
         .. "Current speed multiplier: "
         .. (host_selected_animation_multiplier >= 1
             and tostring(host_selected_animation_multiplier)
-            or ("1/"..tostring(1/host_selected_animation_multiplier))
+            or ("1/" .. tostring(1 / host_selected_animation_multiplier))
         )
     )
 end
@@ -339,10 +357,11 @@ local function adjust_speed_action_click_function(action, direction)
         host_selected_animation_multiplier = possible_multipliers[new_index]
         starting_index = new_index
         if playing_dance_animation_key then -- we're playing a song right now, Update speed now.
-            pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid, host_selected_fmp_song_uuid, host_selected_animation_multiplier )
+            pings.sync_dance(playing_dance_animation_key, host_selected_fmp_avatar_uuid,
+                host_selected_fmp_song_uuid, host_selected_animation_multiplier)
         end
     else
-        print("Reached ".. (direction > 0 and "fastest" or "slowest") .." speed.")
+        print("Reached " .. (direction > 0 and "fastest" or "slowest") .. " speed.")
     end
     action:title(adjust_speed_title_string_getter())
 end
@@ -350,7 +369,7 @@ end
 actions.adjust_speed_action = action_wheel:newAction()
     :title(adjust_speed_title_string_getter())
     :item("minecraft:feather")
-    :onLeftClick(function(this)  adjust_speed_action_click_function(this, 1) end)
+    :onLeftClick(function(this) adjust_speed_action_click_function(this, 1) end)
     :onRightClick(function(this) adjust_speed_action_click_function(this, -1) end)
 dance_action_wheel_page:setAction(3, actions.adjust_speed_action)
 
@@ -368,7 +387,7 @@ events.ENTITY_INIT:register(function()
             dances[name] = {
                 animation = animation,
                 name = (this_dance_metadata.name or name),
-                beats_per_loop = (this_dance_metadata.beats_per_loop or 2)
+                beats_per_loop = (this_dance_metadata.beats_per_loop or 2),
             }
             table.insert(sorted_dance_keys, name)
         end
