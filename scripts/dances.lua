@@ -40,11 +40,13 @@ dance_action_wheel_page:setAction(1, actions.exit_dace_wheel_page)
 
 local host_selected_fmp_avatar_uuid = nil     ---@type UUID?
 local host_selected_fmp_song_uuid = nil       ---@type UUID?
+local host_selected_animation_multiplier = 1 ---@type number
 
 local dances                      = {}  ---@type {[string]: {name: string, animation:Animation, beats_per_loop:integer}}
 local sorted_dance_keys           = {}  ---@type string[]
 
 local playing_dance_animation_key = nil ---@type string?
+local targeted_animation_multiplier = 1 ---@type number
 local targeted_avatar_uuid        = nil ---@type UUID?
 local targeted_song_uuid          = nil ---@type UUID?
 
@@ -200,9 +202,12 @@ end
 ---@param animation_key UUID?
 ---@param fmp_avatar_uuid UUID?
 ---@param playing_song_uuid UUID?
-function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid)
+---@param multiplier number? -- How much faster the animation should play than usual.
+function pings.sync_dance(animation_key, fmp_avatar_uuid, playing_song_uuid, multiplier)
     targeted_avatar_uuid = fmp_avatar_uuid
     targeted_song_uuid = playing_song_uuid
+
+    targeted_animation_multiplier = (multiplier and multiplier or 1)
 
     if (not animation_key) or (not dances[animation_key]) then -- animation is unset or invalid. Clean up state
         -- stop_metronome_events()
@@ -313,10 +318,41 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
     end)
 dance_action_wheel_page:setAction(2, actions.sync_dance_with_nearest_music)
 
+
+local starting_index = 0    -- What's THIS‽ Index by Zero! In **MY** Lua code? It's more likely than you think.
+local possible_multipliers = {[0] = 1, 2, 3, 4, 6, 8}
+for i = 1, #possible_multipliers, 1 do possible_multipliers[ -i ] = 1/possible_multipliers[i] end  -- fill table with reciprocal values.
+
+
+local function adjust_speed_title_string_getter()
+    return (
+        "Adjust speed\nLeft Click to speed up\nRight Click to slow down\n\n"
+        .. "Current speed multiplier: "
+        .. (host_selected_animation_multiplier >= 1
+            and tostring(host_selected_animation_multiplier)
+            or ("1/"..tostring(1/host_selected_animation_multiplier))
+        )
+    )
+end
+
+---@param action Action
+---@param direction 1|-1
+local function adjust_speed_action_click_function(action, direction)
+    local new_index = starting_index + direction
+    if possible_multipliers[new_index] then
+        host_selected_animation_multiplier = possible_multipliers[new_index]
+        starting_index = new_index
+    else
+        print("Reached ".. (direction > 0 and "fastest" or "slowest") .." speed.")
+    end
+    action:title(adjust_speed_title_string_getter())
+end
+
 actions.adjust_speed_action = action_wheel:newAction()
-    :title("Adjust speed\nLeft Click to double\nRight Click to half")
+    :title(adjust_speed_title_string_getter())
     :item("minecraft:feather")
-    :onLeftClick(function(this) print(" -- TODO: actions.adjust_speed_action ")end)
+    :onLeftClick(function(this)  adjust_speed_action_click_function(this, 1) end)
+    :onRightClick(function(this) adjust_speed_action_click_function(this, -1) end)
 dance_action_wheel_page:setAction(3, actions.adjust_speed_action)
 
 
