@@ -80,13 +80,13 @@ local function sync_event_loop_function()
     if not playing_dance_animation_key
         -- or (dances[playing_dance_animation_key] and dances[playing_dance_animation_key].animation:getPlayState() ~= "PLAYING")
     then
-        print("Killing loop because dance is invalid or has stopped.")
+        if host:isHost() then print("Killing dance loop because dance is invalid or has stopped.") end
         sync_event:remove(sync_event_loop_function)
         return
 
     elseif not (targeted_avatar_uuid and targeted_avatar_is_valid()) then
         -- targeted_avatar_uuid is invalid. kill loop and set to nil for next time.
-        print("Killing loop because target avatar is invalid.")
+        if host:isHost() then print("Killing loop because target avatar is invalid.") end
         targeted_avatar_uuid = nil
         sync_event:remove(sync_event_loop_function)
         return
@@ -96,7 +96,7 @@ local function sync_event_loop_function()
 
         if targeted_song_uuid and not targeted_song_is_valid() then
             -- last time, we thought the song was valid. But it is not. unset it.
-            print("song is now invalid. waiting for targeted avatar to play something new.")
+            if host:isHost() then print("song is now invalid. waiting for targeted avatar to play something new.") end
             targeted_song_uuid = nil
         end
 
@@ -116,7 +116,7 @@ local function sync_event_loop_function()
             end
 
             if current_nearest_song_uuid then
-                print("new song found. syncing to that.")
+                if host:isHost() then print("new song found. syncing to that.") end
             end
 
             targeted_song_uuid = current_nearest_song_uuid
@@ -149,7 +149,7 @@ local function sync_event_loop_function()
 end
 
 local function start_sync_event_loop()
-    print("Starting loop")
+    if host:isHost() then print("Starting dance sync loop") end
     sync_event:register(sync_event_loop_function, sync_event_loop_function_name)
 end
 
@@ -307,7 +307,7 @@ actions.sync_dance_with_nearest_music = action_wheel:newAction()
         if avatar_of_closest_song_so_far and closest_song_so_far then
             host_select_avatar_and_song(avatar_of_closest_song_so_far, closest_song_so_far)
             this:setToggled(true)
-            print("Targeted song at ".. tostring(closest_song_position) .. "\n (".. math.floor(math.sqrt(squared_distance_of_closest_song_so_far)) .. " blocks away)\n",avatar_of_closest_song_so_far, closest_song_so_far)
+            print("Targeted song at ".. tostring(closest_song_position))
         else
             print("no new nearby song.")
         end
